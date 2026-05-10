@@ -1,56 +1,70 @@
 import { Link } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import { useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchCart, updateCartItemAsync, removeFromCartAsync, clearCartAsync } from '../store/cartSlice';
 
 function CartPage() {
-  const { cartItems, removeFromCart, updateQuantity, total, clearCart } = useCart();
+  const dispatch = useDispatch();
+  const { items, status, error } = useSelector((state) => state.cart);
 
-  if (cartItems.length === 0) {
+  useEffect(() => {
+    dispatch(fetchCart());
+  }, [dispatch]);
+
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (status === 'loading') return <div>Загрузка...</div>;
+  if (status === 'failed') return <div>Ошибка: {error}</div>;
+
+  if (items.length === 0) {
     return (
-      <div>
+      <div style={{ padding: '20px' }}>
         <h1>Корзина</h1>
-        <p>Корзина пуста</p>
+        <p>Ваша корзина пуста.</p>
         <Link to="/">В каталог</Link>
       </div>
     );
   }
 
   return (
-    <div>
+    <div style={{ padding: '20px' }}>
       <h1>Корзина</h1>
-      <table width="100%">
+      <table className="cart-table">
         <thead>
           <tr>
             <th>Товар</th>
             <th>Цена</th>
-            <th>Количество</th>
+            <th>Кол-во</th>
             <th>Сумма</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          {cartItems.map(item => (
+          {items.map((item) => (
             <tr key={item.id}>
-              <td>
-                <Link to={`/product/${item.id}`}>{item.name}</Link>
-              </td>
+              <td>{item.name}</td>
               <td>{item.price} ₽</td>
               <td>
-                <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>−</button>
-                <span style={{ margin: '0 10px' }}>{item.quantity}</span>
-                <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                <button onClick={() => dispatch(updateCartItemAsync({ itemId: item.id, quantity: item.quantity - 1 }))} disabled={item.quantity <= 1}>−</button>
+                <span style={{ margin: '0 8px' }}>{item.quantity}</span>
+                <button onClick={() => dispatch(updateCartItemAsync({ itemId: item.id, quantity: item.quantity + 1 }))}>+</button>
               </td>
               <td>{item.price * item.quantity} ₽</td>
               <td>
-                <button onClick={() => removeFromCart(item.id)}>Удалить</button>
+                <button onClick={() => dispatch(removeFromCartAsync(item.id))}>Удалить</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p>Итого: {total} ₽</p>
-      <div>
-        <button onClick={clearCart}>Очистить корзину</button>
-        <Link to="/checkout"><button style={{ marginLeft: '10px' }}>Оформить заказ</button></Link>
+      <div style={{ marginTop: '20px', textAlign: 'right' }}>
+        <strong>Итого: {total} ₽</strong>
+        <div style={{ marginTop: '10px' }}>
+          <button onClick={() => dispatch(clearCartAsync())}>Очистить корзину</button>
+          <Link to="/checkout">
+            <button style={{ marginLeft: '10px' }}>Оформить заказ</button>
+          </Link>
+        </div>
       </div>
     </div>
   );
